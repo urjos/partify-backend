@@ -1,4 +1,5 @@
 import { Router } from "express";
+import authorize from "../middlewares/auth.middleware";
 
 const eventRouter = Router();
 
@@ -6,7 +7,9 @@ eventRouter.get("/", (req, res) => res.send({ title: "GET all events" }));
 
 eventRouter.get("/:id", (req, res) => res.send({ title: "GET event details" }));
 
-eventRouter.post("/", (req, res) => res.send({ title: "CREATE a new event" }));
+eventRouter.post("/", authorize, (req, res) =>
+  res.send({ title: "CREATE a new event" }),
+);
 
 eventRouter.put("/:id", (req, res) => res.send({ title: "UPDATE event" }));
 
