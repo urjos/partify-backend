@@ -10,6 +10,7 @@
   "dependencies": {
     "@arcjet/inspect": "^1.11.0",
     "@arcjet/node": "^1.11.0",
+    "@clerk/backend": "^1.21.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",

@@ -1,31 +1,48 @@
-import { JWT_SECRET } from "../config/env.js";
+import { createClerkClient, verifyToken } from "@clerk/backend";
+import { CLERK_SECRET_KEY } from "../config/env.js";
 import User from "../models/user.model.js";
-import jws from "jsonwebtoken";
+
+const clerkClient = createClerkClient({ secretKey: CLERK_SECRET_KEY });
 
 const authorize = async (req, res, next) => {
   try {
-    let token;
+    const authHeader = req.headers.authorization;
 
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
+    const token = authHeader.split(" ")[1];
 
-    const decoded = jws.verify(token, JWT_SECRET);
+    const { sub: clerkId } = await verifyToken(token, {
+      secretKey: CLERK_SECRET_KEY,
+    });
 
-    const user = await User.findById(decoded.userId);
+    let user = await User.findOne({ clerkId });
 
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
+    // Primera vez que vemos a este usuario de Clerk: lo espejamos en Mongo.
+    // Necesario porque Event.organizer / attendees.user son ObjectId, no
+    // clerkId directo.
+    if (!user) {
+      const clerkUser = await clerkClient.users.getUser(clerkId);
+      const fullName = [clerkUser.firstName, clerkUser.lastName]
+        .filter(Boolean)
+        .join(" ");
+
+      user = await User.create({
+        clerkId,
+        name: fullName || clerkUser.username || "Partify user",
+        email: clerkUser.emailAddresses?.[0]?.emailAddress,
+        avatarUrl: clerkUser.imageUrl,
+      });
+    }
 
     req.user = user;
-
     next();
   } catch (error) {
-    res.status(401).json({ message: "Unauthorized", error: error.message });
+    res
+      .status(401)
+      .json({ success: false, message: "Unauthorized", error: error.message });
   }
 };
 

@@ -1,27 +1,29 @@
 import mongoose from "mongoose";
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
+    clerkId: {
+      type: String,
+      required: [true, "Clerk ID is required"],
+      unique: true,
+      index: true,
+    },
     name: {
       type: String,
-      required: [true, "User Name is required"],
+      required: [true, "User name is required"],
       trim: true,
-      minlength: 2,
+      minLength: 2,
       maxLength: 50,
     },
     email: {
       type: String,
-      required: [true, "User Email is required"],
-      unique: true,
       trim: true,
       lowercase: true,
-      match: [/\S+@\S+\.\S+/, "Pleas fill a valid email address"],
+      match: [/\S+@\S+\.\S+/, "Please fill a valid email address"],
     },
-
-    password: {
+    avatarUrl: {
       type: String,
-      required: [true, "User password is required"],
-      minlength: 6,
+      trim: true,
     },
   },
   { timestamps: true },
