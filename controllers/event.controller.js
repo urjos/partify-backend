@@ -63,7 +63,7 @@ export const getEvents = async (req, res, next) => {
             type: "Point",
             coordinates: [Number(lng), Number(lat)],
           },
-          $maxDistance: (Number(radiusKm) || 25) * 1000, // km -> metros
+          $maxDistance: (Number(radiusKm) || 25) * 1000,
         },
       };
     }
