@@ -6,11 +6,19 @@ import userRouter from "./routes/user.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import eventRouter from "./routes/event.routes.js";
 import connnectToDatabase from "./database/mongodb.js";
+import webhookRouter from "./routes/webhook.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
 import cookieParser from "cookie-parser";
+import bodyParser from "body-parser";
 
 const app = express();
+
+app.use(
+  "/api/v1/webhooks",
+  bodyParser.raw({ type: "application/json" }),
+  webhookRouter,
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
