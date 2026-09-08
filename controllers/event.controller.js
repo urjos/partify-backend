@@ -26,6 +26,7 @@ const toEventItem = (event, currentUserId) => {
     isFreeEvent: plain.isFreeEvent,
     price: plain.price,
     author: plain.organizer?.name ?? "Partify user",
+    authorAvatar: plain.organizer?.avatarUrl,
     attendeeAvatars: (plain.attendees ?? [])
       .filter((a) => a.status === "going" && a.user?.avatarUrl)
       .slice(0, 3)

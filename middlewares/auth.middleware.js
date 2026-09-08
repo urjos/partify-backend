@@ -40,6 +40,7 @@ const authorize = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.log("Token error:", error);
     res
       .status(401)
       .json({ success: false, message: "Unauthorized", error: error.message });
