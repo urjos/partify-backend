@@ -57,13 +57,11 @@ export const getEvents = async (req, res, next) => {
     if (category) filter.category = category;
 
     if (lat && lng) {
+      const radiusKmNumber = Number(radiusKm) || 25;
+      const radiusInRadians = radiusKmNumber / 6378.1; // Radio de la Tierra en km
       filter["location.coordinates"] = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [Number(lng), Number(lat)],
-          },
-          $maxDistance: (Number(radiusKm) || 25) * 1000,
+        $geoWithin: {
+          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians],
         },
       };
     }
