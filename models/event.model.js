@@ -132,6 +132,15 @@ const eventSchema = new mongoose.Schema(
         return this.isFreeEvent === false;
       },
     },
+    priceWomen: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    isMultiplePrices: {
+      type: Boolean,
+      default: false,
+    },
     paymentMethod: {
       type: String,
       enum: ["chat", "external"],
@@ -146,6 +155,14 @@ const eventSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+    hideExactAddress: {
+      type: Boolean,
+      default: false,
+    },
+    closingAt: {
+      type: Date,
+      default: null,
     },
     organizer: {
       type: mongoose.Schema.Types.ObjectId,

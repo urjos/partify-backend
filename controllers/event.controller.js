@@ -26,9 +26,13 @@ const toEventItem = (event, currentUserId) => {
     capacity: plain.capacity ?? undefined,
     isFreeEvent: plain.isFreeEvent,
     price: plain.price,
+    priceWomen: plain.priceWomen,
+    isMultiplePrices: plain.isMultiplePrices,
     paymentMethod: plain.paymentMethod ?? "chat",
     contactPhone: plain.contactPhone ?? "",
     externalTicketUrl: plain.externalTicketUrl ?? "",
+    hideExactAddress: plain.hideExactAddress ?? false,
+    closingAt: plain.closingAt ? plain.closingAt.toISOString() : undefined,
     author: plain.organizer?.name ?? "Partify user",
     authorAvatar: plain.organizer?.avatarUrl,
     attendeeAvatars: (plain.attendees ?? [])
@@ -118,9 +122,13 @@ export const createEvent = async (req, res, next) => {
       capacity,
       isFreeEvent,
       price,
+      priceWomen,
+      isMultiplePrices,
       paymentMethod,
       contactPhone,
       externalTicketUrl,
+      hideExactAddress,
+      closingAt,
     } = req.body;
 
     const event = await Event.create({
@@ -134,9 +142,13 @@ export const createEvent = async (req, res, next) => {
       capacity: capacity || null,
       isFreeEvent: isFreeEvent ?? true,
       price: isFreeEvent === false ? price : 0,
+      priceWomen: isFreeEvent === false ? priceWomen : 0,
+      isMultiplePrices: isMultiplePrices ?? false,
       paymentMethod: paymentMethod || "chat",
       contactPhone: contactPhone || "",
       externalTicketUrl: externalTicketUrl || "",
+      hideExactAddress: hideExactAddress ?? false,
+      closingAt: closingAt ? new Date(closingAt) : null,
       organizer: req.user._id,
     });
 
@@ -178,9 +190,13 @@ export const updateEvent = async (req, res, next) => {
       capacity,
       isFreeEvent,
       price,
+      priceWomen,
+      isMultiplePrices,
       paymentMethod,
       contactPhone,
       externalTicketUrl,
+      hideExactAddress,
+      closingAt,
     } = req.body;
 
     if (media) event.media = media;
@@ -192,10 +208,16 @@ export const updateEvent = async (req, res, next) => {
     if (capacity !== undefined) event.capacity = capacity || null;
     if (isFreeEvent !== undefined) event.isFreeEvent = isFreeEvent;
     if (price !== undefined) event.price = isFreeEvent === false ? price : 0;
+    if (priceWomen !== undefined)
+      event.priceWomen = isFreeEvent === false ? priceWomen : 0;
+    if (isMultiplePrices !== undefined) event.isMultiplePrices = isMultiplePrices;
     if (paymentMethod !== undefined) event.paymentMethod = paymentMethod;
     if (contactPhone !== undefined) event.contactPhone = contactPhone;
     if (externalTicketUrl !== undefined)
       event.externalTicketUrl = externalTicketUrl;
+    if (hideExactAddress !== undefined) event.hideExactAddress = hideExactAddress;
+    if (closingAt !== undefined)
+      event.closingAt = closingAt ? new Date(closingAt) : null;
 
     await event.save();
     await event.populate(ORGANIZER_POPULATE);
