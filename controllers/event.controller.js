@@ -17,6 +17,7 @@ const toEventItem = (event, currentUserId) => {
     title: plain.title,
     description: plain.description,
     category: plain.category,
+    typeMusic: plain.typeMusic ?? "",
     startAt: plain.startAt,
     dateLabel: new Date(plain.startAt).toLocaleString(),
     location: plain.location.address,
@@ -25,6 +26,9 @@ const toEventItem = (event, currentUserId) => {
     capacity: plain.capacity ?? undefined,
     isFreeEvent: plain.isFreeEvent,
     price: plain.price,
+    paymentMethod: plain.paymentMethod ?? "chat",
+    contactPhone: plain.contactPhone ?? "",
+    externalTicketUrl: plain.externalTicketUrl ?? "",
     author: plain.organizer?.name ?? "Partify user",
     authorAvatar: plain.organizer?.avatarUrl,
     attendeeAvatars: (plain.attendees ?? [])
@@ -108,11 +112,15 @@ export const createEvent = async (req, res, next) => {
       title,
       description,
       category,
+      typeMusic,
       startAt,
       location,
       capacity,
       isFreeEvent,
       price,
+      paymentMethod,
+      contactPhone,
+      externalTicketUrl,
     } = req.body;
 
     const event = await Event.create({
@@ -120,11 +128,15 @@ export const createEvent = async (req, res, next) => {
       title,
       description,
       category,
+      typeMusic: typeMusic || "",
       startAt,
       location: toGeoLocation(location),
       capacity: capacity || null,
       isFreeEvent: isFreeEvent ?? true,
       price: isFreeEvent === false ? price : 0,
+      paymentMethod: paymentMethod || "chat",
+      contactPhone: contactPhone || "",
+      externalTicketUrl: externalTicketUrl || "",
       organizer: req.user._id,
     });
 
@@ -166,6 +178,9 @@ export const updateEvent = async (req, res, next) => {
       capacity,
       isFreeEvent,
       price,
+      paymentMethod,
+      contactPhone,
+      externalTicketUrl,
     } = req.body;
 
     if (media) event.media = media;
@@ -177,6 +192,10 @@ export const updateEvent = async (req, res, next) => {
     if (capacity !== undefined) event.capacity = capacity || null;
     if (isFreeEvent !== undefined) event.isFreeEvent = isFreeEvent;
     if (price !== undefined) event.price = isFreeEvent === false ? price : 0;
+    if (paymentMethod !== undefined) event.paymentMethod = paymentMethod;
+    if (contactPhone !== undefined) event.contactPhone = contactPhone;
+    if (externalTicketUrl !== undefined)
+      event.externalTicketUrl = externalTicketUrl;
 
     await event.save();
     await event.populate(ORGANIZER_POPULATE);

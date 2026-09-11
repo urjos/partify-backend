@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
 
 const EVENT_CATEGORIES = [
+  "Rooftop",
+  "Fiesta en Casa",
+  "Underground",
+  "After",
+  "Discoteca",
+  "Pool party",
+  "Cumpleaños",
+  "After office",
+  "Fiesta electrónica",
   "Music",
   "Nightlife",
   "House party",
@@ -70,6 +79,10 @@ const eventSchema = new mongoose.Schema(
         message: "{VALUE} is not a supported category",
       },
     },
+    typeMusic: {
+      type: String,
+      default: "",
+    },
     media: {
       type: [mediaItemSchema],
       validate: {
@@ -118,6 +131,21 @@ const eventSchema = new mongoose.Schema(
       required: function () {
         return this.isFreeEvent === false;
       },
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["chat", "external"],
+      default: "chat",
+    },
+    contactPhone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    externalTicketUrl: {
+      type: String,
+      trim: true,
+      default: "",
     },
     organizer: {
       type: mongoose.Schema.Types.ObjectId,
