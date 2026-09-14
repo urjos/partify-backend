@@ -25,6 +25,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Event",
+      },
+    ],
   },
   { timestamps: true },
 );

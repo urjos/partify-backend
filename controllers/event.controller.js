@@ -1,4 +1,5 @@
 import Event from "../models/event.model.js";
+import User from "../models/user.model.js";
 
 const toGeoLocation = ({ address, latitude, longitude }) => ({
   address,
@@ -8,8 +9,29 @@ const toGeoLocation = ({ address, latitude, longitude }) => ({
   },
 });
 
-const toEventItem = (event, currentUserId) => {
+const toEventItem = (event, userOrId) => {
   const plain = event.toObject ? event.toObject() : event;
+  const currentUserId = userOrId?._id
+    ? userOrId._id.toString()
+    : userOrId
+      ? userOrId.toString()
+      : undefined;
+  const userFavorites = userOrId?.favorites;
+
+  const userRatingObj =
+    currentUserId && plain.ratings
+      ? plain.ratings.find(
+          (r) =>
+            (r.user?._id?.toString() || r.user?.toString()) === currentUserId,
+        )
+      : null;
+
+  const isFavorite = userFavorites
+    ? userFavorites.some(
+        (fav) =>
+          (fav?._id?.toString() || fav?.toString()) === plain._id.toString(),
+      )
+    : false;
 
   return {
     id: plain._id.toString(),
@@ -34,6 +56,7 @@ const toEventItem = (event, currentUserId) => {
     hideExactAddress: plain.hideExactAddress ?? false,
     closingAt: plain.closingAt ? plain.closingAt.toISOString() : undefined,
     author: plain.organizer?.name ?? "Partify user",
+    authorId: plain.organizer?._id?.toString(),
     dressCode: plain.dressCode ?? "Casual",
     dressCodeDetails: plain.dressCodeDetails ?? "",
     corkageFree: plain.corkageFree ?? false,
@@ -45,17 +68,27 @@ const toEventItem = (event, currentUserId) => {
       .filter((a) => a.status === "going" && a.user?.avatarUrl)
       .slice(0, 3)
       .map((a) => a.user.avatarUrl),
-    attendeeCount: plain.attendeeCount,
-    interestedCount: plain.interestedCount,
+    attendeeCount:
+      plain.attendeeCount ??
+      (plain.attendees?.filter((a) => a.status === "going").length ?? 0),
+    interestedCount:
+      plain.interestedCount ??
+      (plain.attendees?.filter((a) => a.status === "interested").length ?? 0),
+    rating: plain.rating ?? 0,
+    ratingsCount:
+      plain.ratingsCount ?? (plain.ratings ? plain.ratings.length : 0),
+    userRating: userRatingObj ? userRatingObj.score : null,
+    isFavorite,
     isGoing: currentUserId
       ? plain.attendees?.some(
           (a) =>
-            a.user?._id?.toString() === currentUserId.toString() &&
+            (a.user?._id?.toString() || a.user?.toString()) === currentUserId &&
             a.status === "going",
         )
       : undefined,
     isOwner: currentUserId
-      ? plain.organizer?._id?.toString() === currentUserId.toString()
+      ? (plain.organizer?._id?.toString() || plain.organizer?.toString()) ===
+        currentUserId
       : undefined,
   };
 };
@@ -87,7 +120,7 @@ export const getEvents = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: events.map((event) => toEventItem(event, req.user?._id)),
+      data: events.map((event) => toEventItem(event, req.user)),
     });
   } catch (error) {
     next(error);
@@ -108,7 +141,7 @@ export const getEvent = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: toEventItem(event, req.user?._id),
+      data: toEventItem(event, req.user),
     });
   } catch (error) {
     next(error);
@@ -191,7 +224,7 @@ export const createEvent = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "Event created successfully",
-      data: toEventItem(event, req.user._id),
+      data: toEventItem(event, req.user),
     });
   } catch (error) {
     next(error);
@@ -290,7 +323,7 @@ export const updateEvent = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Event updated successfully",
-      data: toEventItem(event, req.user._id),
+      data: toEventItem(event, req.user),
     });
   } catch (error) {
     next(error);
@@ -360,7 +393,7 @@ export const setAttendance = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: toEventItem(event, req.user._id),
+      data: toEventItem(event, req.user),
     });
   } catch (error) {
     next(error);
@@ -379,7 +412,88 @@ export const getUserEvents = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: events.map((event) => toEventItem(event, req.user?._id)),
+      data: events.map((event) => toEventItem(event, req.user)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rateEvent = async (req, res, next) => {
+  try {
+    const { score } = req.body;
+    const numericScore = Number(score);
+
+    if (!numericScore || numericScore < 1 || numericScore > 5) {
+      const error = new Error("Score must be a number between 1 and 5");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      const error = new Error("Event not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Remove existing rating from this user if any
+    event.ratings = (event.ratings || []).filter(
+      (r) => (r.user?.toString()) !== req.user._id.toString(),
+    );
+
+    event.ratings.push({
+      user: req.user._id,
+      score: numericScore,
+      createdAt: new Date(),
+    });
+
+    await event.save();
+    await event.populate(ORGANIZER_POPULATE);
+    await event.populate(ATTENDEES_POPULATE);
+
+    res.status(200).json({
+      success: true,
+      message: "Event rated successfully",
+      data: toEventItem(event, req.user),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const toggleFavorite = async (req, res, next) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      const error = new Error("Event not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const user = await User.findById(req.user._id);
+    const eventIdStr = event._id.toString();
+
+    const isFav = (user.favorites || []).some(
+      (f) => f.toString() === eventIdStr,
+    );
+
+    if (isFav) {
+      user.favorites = user.favorites.filter((f) => f.toString() !== eventIdStr);
+    } else {
+      user.favorites = [...(user.favorites || []), event._id];
+    }
+
+    await user.save();
+    req.user = user;
+
+    await event.populate(ORGANIZER_POPULATE);
+    await event.populate(ATTENDEES_POPULATE);
+
+    res.status(200).json({
+      success: true,
+      message: isFav ? "Removed from favorites" : "Added to favorites",
+      data: toEventItem(event, user),
     });
   } catch (error) {
     next(error);

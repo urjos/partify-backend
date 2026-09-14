@@ -6,7 +6,9 @@ import {
   getEvent,
   getEvents,
   getUserEvents,
+  rateEvent,
   setAttendance,
+  toggleFavorite,
   updateEvent,
 } from "../controllers/event.controller.js";
 
@@ -20,5 +22,7 @@ eventRouter.post("/", authorize, createEvent);
 eventRouter.put("/:id", authorize, updateEvent);
 eventRouter.delete("/:id", authorize, cancelEvent);
 eventRouter.patch("/:id/attendance", authorize, setAttendance);
+eventRouter.patch("/:id/rate", authorize, rateEvent);
+eventRouter.patch("/:id/favorite", authorize, toggleFavorite);
 
 export default eventRouter;

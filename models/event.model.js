@@ -56,6 +56,27 @@ const attendeeSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const ratingSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    score: {
+      type: Number,
+      min: 1,
+      max: 5,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const eventSchema = new mongoose.Schema(
   {
     title: {
@@ -202,6 +223,10 @@ const eventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    ratings: {
+      type: [ratingSchema],
+      default: [],
+    },
   },
   { timestamps: true },
 );
@@ -221,6 +246,16 @@ eventSchema.virtual("attendeeCount").get(function () {
 
 eventSchema.virtual("interestedCount").get(function () {
   return this.attendees.filter((a) => a.status === "interested").length;
+});
+
+eventSchema.virtual("rating").get(function () {
+  if (!this.ratings || this.ratings.length === 0) return 0;
+  const sum = this.ratings.reduce((acc, r) => acc + r.score, 0);
+  return Number((sum / this.ratings.length).toFixed(1));
+});
+
+eventSchema.virtual("ratingsCount").get(function () {
+  return this.ratings ? this.ratings.length : 0;
 });
 
 eventSchema.set("toJSON", { virtuals: true });
