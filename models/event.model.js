@@ -127,21 +127,18 @@ const eventSchema = new mongoose.Schema(
     price: {
       type: Number,
       min: 0,
-      default: 0,
-      required: function () {
-        return this.isFreeEvent === false;
-      },
+      default: null,
     },
     priceWomen: {
       type: Number,
       min: 0,
-      default: 0,
+      default: null,
     },
     isMultiplePrices: {
       type: Boolean,
       default: false,
     },
-    paymentMethod: {
+    contactMethod: {
       type: String,
       enum: ["chat", "external"],
       default: "chat",
@@ -177,6 +174,33 @@ const eventSchema = new mongoose.Schema(
       type: String,
       enum: ["active", "cancelled"],
       default: "active",
+    },
+    dressCode: {
+      type: String,
+      default: "Casual",
+      trim: true,
+    },
+    dressCodeDetails: {
+      type: String,
+      maxlength: 50,
+      default: "",
+      trim: true,
+    },
+    corkageFree: {
+      type: Boolean,
+      default: false,
+    },
+    openBar: {
+      type: Boolean,
+      default: false,
+    },
+    isAdultsOnly: {
+      type: Boolean,
+      default: false,
+    },
+    requirePhysicalId: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true },

@@ -28,12 +28,18 @@ const toEventItem = (event, currentUserId) => {
     price: plain.price,
     priceWomen: plain.priceWomen,
     isMultiplePrices: plain.isMultiplePrices,
-    paymentMethod: plain.paymentMethod ?? "chat",
+    contactMethod: plain.contactMethod ?? "chat",
     contactPhone: plain.contactPhone ?? "",
     externalTicketUrl: plain.externalTicketUrl ?? "",
     hideExactAddress: plain.hideExactAddress ?? false,
     closingAt: plain.closingAt ? plain.closingAt.toISOString() : undefined,
     author: plain.organizer?.name ?? "Partify user",
+    dressCode: plain.dressCode ?? "Casual",
+    dressCodeDetails: plain.dressCodeDetails ?? "",
+    corkageFree: plain.corkageFree ?? false,
+    openBar: plain.openBar ?? false,
+    isAdultsOnly: plain.isAdultsOnly ?? false,
+    requirePhysicalId: plain.requirePhysicalId ?? false,
     authorAvatar: plain.organizer?.avatarUrl,
     attendeeAvatars: (plain.attendees ?? [])
       .filter((a) => a.status === "going" && a.user?.avatarUrl)
@@ -124,11 +130,17 @@ export const createEvent = async (req, res, next) => {
       price,
       priceWomen,
       isMultiplePrices,
-      paymentMethod,
+      contactMethod,
       contactPhone,
       externalTicketUrl,
       hideExactAddress,
       closingAt,
+      dressCode,
+      dressCodeDetails,
+      corkageFree,
+      openBar,
+      isAdultsOnly,
+      requirePhysicalId,
     } = req.body;
 
     const event = await Event.create({
@@ -141,15 +153,37 @@ export const createEvent = async (req, res, next) => {
       location: toGeoLocation(location),
       capacity: capacity || null,
       isFreeEvent: isFreeEvent ?? true,
-      price: isFreeEvent === false ? price : 0,
-      priceWomen: isFreeEvent === false ? priceWomen : 0,
+      price:
+        isFreeEvent === false &&
+        !isMultiplePrices &&
+        price !== undefined &&
+        price !== null &&
+        price !== ""
+          ? Number(price)
+          : null,
+      priceWomen:
+        isFreeEvent === false &&
+        !isMultiplePrices &&
+        priceWomen !== undefined &&
+        priceWomen !== null &&
+        priceWomen !== ""
+          ? Number(priceWomen)
+          : null,
       isMultiplePrices: isMultiplePrices ?? false,
-      paymentMethod: paymentMethod || "chat",
+      contactMethod: contactMethod || "chat",
       contactPhone: contactPhone || "",
       externalTicketUrl: externalTicketUrl || "",
       hideExactAddress: hideExactAddress ?? false,
       closingAt: closingAt ? new Date(closingAt) : null,
       organizer: req.user._id,
+      dressCode: dressCode || "Casual",
+      dressCodeDetails: dressCodeDetails
+        ? dressCodeDetails.trim().slice(0, 50)
+        : "",
+      corkageFree: Boolean(corkageFree),
+      openBar: Boolean(openBar),
+      isAdultsOnly: Boolean(isAdultsOnly),
+      requirePhysicalId: Boolean(requirePhysicalId),
     });
 
     await event.populate(ORGANIZER_POPULATE);
@@ -185,6 +219,7 @@ export const updateEvent = async (req, res, next) => {
       title,
       description,
       category,
+      typeMusic,
       startAt,
       location,
       capacity,
@@ -192,32 +227,62 @@ export const updateEvent = async (req, res, next) => {
       price,
       priceWomen,
       isMultiplePrices,
-      paymentMethod,
+      contactMethod,
       contactPhone,
       externalTicketUrl,
       hideExactAddress,
       closingAt,
+      dressCode,
+      dressCodeDetails,
+      corkageFree,
+      openBar,
+      isAdultsOnly,
+      requirePhysicalId,
     } = req.body;
 
     if (media) event.media = media;
     if (title) event.title = title;
     if (description) event.description = description;
     if (category) event.category = category;
+    if (typeMusic !== undefined) event.typeMusic = typeMusic;
     if (startAt) event.startAt = startAt;
     if (location) event.location = toGeoLocation(location);
     if (capacity !== undefined) event.capacity = capacity || null;
+
+    const nextIsFree = isFreeEvent !== undefined ? isFreeEvent : event.isFreeEvent;
+    const nextIsMultiple = isMultiplePrices !== undefined ? isMultiplePrices : event.isMultiplePrices;
     if (isFreeEvent !== undefined) event.isFreeEvent = isFreeEvent;
-    if (price !== undefined) event.price = isFreeEvent === false ? price : 0;
-    if (priceWomen !== undefined)
-      event.priceWomen = isFreeEvent === false ? priceWomen : 0;
     if (isMultiplePrices !== undefined) event.isMultiplePrices = isMultiplePrices;
-    if (paymentMethod !== undefined) event.paymentMethod = paymentMethod;
+
+    if (nextIsFree || nextIsMultiple) {
+      event.price = null;
+      event.priceWomen = null;
+    } else {
+      if (price !== undefined) {
+        event.price = price !== null && price !== "" ? Number(price) : null;
+      }
+      if (priceWomen !== undefined) {
+        event.priceWomen =
+          priceWomen !== null && priceWomen !== "" ? Number(priceWomen) : null;
+      }
+    }
+
+    if (contactMethod !== undefined) event.contactMethod = contactMethod;
     if (contactPhone !== undefined) event.contactPhone = contactPhone;
     if (externalTicketUrl !== undefined)
       event.externalTicketUrl = externalTicketUrl;
-    if (hideExactAddress !== undefined) event.hideExactAddress = hideExactAddress;
+    if (hideExactAddress !== undefined)
+      event.hideExactAddress = hideExactAddress;
     if (closingAt !== undefined)
       event.closingAt = closingAt ? new Date(closingAt) : null;
+    if (dressCode !== undefined) event.dressCode = dressCode;
+    if (dressCodeDetails !== undefined)
+      event.dressCodeDetails = dressCodeDetails.trim().slice(0, 50);
+    if (corkageFree !== undefined) event.corkageFree = Boolean(corkageFree);
+    if (openBar !== undefined) event.openBar = Boolean(openBar);
+    if (isAdultsOnly !== undefined) event.isAdultsOnly = Boolean(isAdultsOnly);
+    if (requirePhysicalId !== undefined)
+      event.requirePhysicalId = Boolean(requirePhysicalId);
 
     await event.save();
     await event.populate(ORGANIZER_POPULATE);
