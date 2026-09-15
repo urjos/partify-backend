@@ -43,6 +43,39 @@ export const getUser = async (req, res, next) => {
   }
 };
 
+export const checkUsernameAvailability = async (req, res, next) => {
+  try {
+    const { username } = req.query;
+    if (!username || typeof username !== "string") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Username is required" });
+    }
+
+    const clean = username.trim().toLowerCase();
+    if (!/^[a-z0-9._]{3,30}$/.test(clean)) {
+      return res.status(200).json({
+        success: true,
+        data: { available: false, reason: "invalid_format", username: clean },
+      });
+    }
+
+    const query = { username: clean };
+    if (req.user?._id) {
+      query._id = { $ne: req.user._id };
+    }
+
+    const existing = await User.findOne(query);
+
+    res.status(200).json({
+      success: true,
+      data: { available: !existing, username: clean },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateMyProfile = async (req, res, next) => {
   try {
     let targetUserId = req.user._id;
@@ -90,7 +123,28 @@ export const updateMyProfile = async (req, res, next) => {
     } = req.body;
 
     if (name !== undefined) user.name = name.trim();
-    if (username !== undefined) user.username = username.trim();
+
+    if (username !== undefined) {
+      const cleanUsername = username.trim().toLowerCase();
+      if (cleanUsername && cleanUsername !== user.username) {
+        if (!/^[a-z0-9._]{3,30}$/.test(cleanUsername)) {
+          const error = new Error("Formato de nombre de usuario inválido");
+          error.statusCode = 400;
+          throw error;
+        }
+        const existing = await User.findOne({
+          username: cleanUsername,
+          _id: { $ne: user._id },
+        });
+        if (existing) {
+          const error = new Error("El nombre de usuario ya está en uso");
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+      user.username = cleanUsername;
+    }
+
     if (bio !== undefined) user.bio = bio.trim();
     if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
     if (location !== undefined) user.location = location.trim();

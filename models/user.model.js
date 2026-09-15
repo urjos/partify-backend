@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       lowercase: true,
+      unique: true,
       match: [/\S+@\S+\.\S+/, "Please fill a valid email address"],
     },
     avatarUrl: {
@@ -27,8 +28,10 @@ const userSchema = new mongoose.Schema(
     },
     username: {
       type: String,
+      unique: true,
+      sparse: true,
       trim: true,
-      default: "",
+      lowercase: true,
     },
     bio: {
       type: String,

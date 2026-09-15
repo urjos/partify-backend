@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import authorize from "../middlewares/auth.middleware.js";
 import {
+  checkUsernameAvailability,
   getMyProfile,
   getUser,
   getUsers,
@@ -11,6 +12,7 @@ import {
 const userRouter = Router();
 
 userRouter.get("/", getUsers);
+userRouter.get("/check-username", authorize, checkUsernameAvailability);
 userRouter.get("/me", authorize, getMyProfile);
 userRouter.put("/me", authorize, updateMyProfile);
 userRouter.get("/:id", authorize, getUser);
