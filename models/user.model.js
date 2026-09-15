@@ -25,6 +25,47 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    username: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxLength: 250,
+      default: "",
+    },
+    location: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    genres: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    spotifyPlaylist: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    socials: {
+      instagram: { type: String, trim: true, default: "" },
+      facebook: { type: String, trim: true, default: "" },
+      tiktok: { type: String, trim: true, default: "" },
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    visibleInRadar: {
+      type: Boolean,
+      default: true,
+    },
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,
