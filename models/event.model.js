@@ -231,12 +231,21 @@ const eventSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Índice geoespacial — imprescindible para $near / $geoWithin.
+// Índices de Producción para consultas de alto rendimiento
+// 1. Índice geoespacial — imprescindible para $near / $geoWithin y radar de eventos.
 eventSchema.index({ "location.coordinates": "2dsphere" });
 
-// Índices que vas a usar seguido: feed ordenado por fecha, y "mis eventos".
-eventSchema.index({ startAt: 1 });
-eventSchema.index({ organizer: 1 });
+// 2. Feed principal activo ordenado por fecha de inicio
+eventSchema.index({ status: 1, startAt: 1 });
+
+// 3. Filtrado por categoría en feed activo
+eventSchema.index({ status: 1, category: 1, startAt: 1 });
+
+// 4. Búsqueda de eventos organizados por usuario (ordenados por fecha de creación)
+eventSchema.index({ organizer: 1, createdAt: -1 });
+
+// 5. Búsqueda de eventos a los que asiste un usuario (Going / Interested)
+eventSchema.index({ "attendees.user": 1 });
 
 // Virtuals: cuentas derivadas en vez de guardadas — así nunca se
 // desincronizan del arreglo real de attendees.

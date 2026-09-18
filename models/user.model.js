@@ -75,6 +75,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Índice para filtrado de usuarios en radar nocturno
+userSchema.index({ visibleInRadar: 1 });
+
 const User = mongoose.model("User", userSchema);
 
 export default User;
