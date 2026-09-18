@@ -151,7 +151,6 @@ export const updateMyProfile = async (req, res, next) => {
       location,
       genres,
       spotifyPlaylist,
-      socials,
       phone,
       visibleInRadar,
     } = req.body;
@@ -185,22 +184,6 @@ export const updateMyProfile = async (req, res, next) => {
     if (genres !== undefined) user.genres = Array.isArray(genres) ? genres : [];
     if (spotifyPlaylist !== undefined)
       user.spotifyPlaylist = spotifyPlaylist.trim();
-    if (socials !== undefined) {
-      user.socials = {
-        instagram:
-          socials.instagram !== undefined
-            ? socials.instagram.trim()
-            : user.socials?.instagram || "",
-        facebook:
-          socials.facebook !== undefined
-            ? socials.facebook.trim()
-            : user.socials?.facebook || "",
-        tiktok:
-          socials.tiktok !== undefined
-            ? socials.tiktok.trim()
-            : user.socials?.tiktok || "",
-      };
-    }
     if (phone !== undefined) user.phone = phone.trim();
     if (visibleInRadar !== undefined)
       user.visibleInRadar = Boolean(visibleInRadar);

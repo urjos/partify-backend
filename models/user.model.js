@@ -55,11 +55,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    socials: {
-      instagram: { type: String, trim: true, default: "" },
-      facebook: { type: String, trim: true, default: "" },
-      tiktok: { type: String, trim: true, default: "" },
-    },
+
     phone: {
       type: String,
       trim: true,
