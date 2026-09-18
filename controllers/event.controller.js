@@ -33,6 +33,14 @@ const toEventItem = (event, userOrId) => {
       )
     : false;
 
+  const currentAttendee = currentUserId && plain.attendees
+    ? plain.attendees.find(
+        (a) =>
+          (a.user?._id?.toString() || a.user?.toString()) === currentUserId,
+      )
+    : null;
+  const attendanceStatus = currentAttendee ? currentAttendee.status : null;
+
   return {
     id: plain._id.toString(),
     media: plain.media,
@@ -79,13 +87,9 @@ const toEventItem = (event, userOrId) => {
       plain.ratingsCount ?? (plain.ratings ? plain.ratings.length : 0),
     userRating: userRatingObj ? userRatingObj.score : null,
     isFavorite,
-    isGoing: currentUserId
-      ? plain.attendees?.some(
-          (a) =>
-            (a.user?._id?.toString() || a.user?.toString()) === currentUserId &&
-            a.status === "going",
-        )
-      : undefined,
+    attendanceStatus,
+    isGoing: attendanceStatus === "going",
+    isInterested: attendanceStatus === "interested",
     isOwner: currentUserId
       ? (plain.organizer?._id?.toString() || plain.organizer?.toString()) ===
         currentUserId
