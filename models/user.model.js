@@ -1,5 +1,26 @@
 import mongoose from "mongoose";
 
+const ratingSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    score: {
+      type: Number,
+      min: 1,
+      max: 5,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     clerkId: {
@@ -58,12 +79,17 @@ const userSchema = new mongoose.Schema(
 
     phone: {
       type: String,
+      unique: true,
+      sparse: true,
       trim: true,
-      default: "",
     },
     visibleInRadar: {
       type: Boolean,
       default: true,
+    },
+    ratings: {
+      type: [ratingSchema],
+      default: [],
     },
     favorites: [
       {

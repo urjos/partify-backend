@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 import Event from "../models/event.model.js";
 
-const attachUserStats = async (user) => {
+const attachUserStats = async (user, currentUserId) => {
   const userObj = user.toObject ? user.toObject() : { ...user };
 
   const organizedCount = await Event.countDocuments({
@@ -14,9 +14,17 @@ const attachUserStats = async (user) => {
     "attendees.status": "going",
   });
 
-  const events = await Event.find({ organizer: user._id });
   let totalScore = 0;
   let totalRatings = 0;
+
+  if (user.ratings && user.ratings.length > 0) {
+    for (const r of user.ratings) {
+      totalScore += r.score;
+      totalRatings++;
+    }
+  }
+
+  const events = await Event.find({ organizer: user._id });
   for (const ev of events) {
     if (ev.ratings && ev.ratings.length > 0) {
       for (const r of ev.ratings) {
@@ -30,6 +38,18 @@ const attachUserStats = async (user) => {
   userObj.attendedCount = attendedCount;
   userObj.rating =
     totalRatings > 0 ? Number((totalScore / totalRatings).toFixed(1)) : 5.0;
+  userObj.ratingsCount = totalRatings;
+
+  if (currentUserId && user.ratings) {
+    const existing = user.ratings.find(
+      (r) =>
+        (r.user?.toString() || r.user?._id?.toString()) ===
+        currentUserId.toString(),
+    );
+    userObj.userRating = existing ? existing.score : null;
+  } else {
+    userObj.userRating = null;
+  }
 
   return userObj;
 };
@@ -46,7 +66,7 @@ export const getUsers = async (req, res, next) => {
 
 export const getMyProfile = async (req, res, next) => {
   try {
-    const dataWithStats = await attachUserStats(req.user);
+    const dataWithStats = await attachUserStats(req.user, req.user._id);
     res.status(200).json({ success: true, data: dataWithStats });
   } catch (error) {
     next(error);
@@ -70,7 +90,8 @@ export const getUser = async (req, res, next) => {
       throw error;
     }
 
-    const dataWithStats = await attachUserStats(user);
+    const currentUserId = req.user?._id;
+    const dataWithStats = await attachUserStats(user, currentUserId);
     res.status(200).json({ success: true, data: dataWithStats });
   } catch (error) {
     next(error);
@@ -184,7 +205,10 @@ export const updateMyProfile = async (req, res, next) => {
     if (genres !== undefined) user.genres = Array.isArray(genres) ? genres : [];
     if (spotifyPlaylist !== undefined)
       user.spotifyPlaylist = spotifyPlaylist.trim();
-    if (phone !== undefined) user.phone = phone.trim();
+    if (phone !== undefined) {
+      const cleanPhone = phone.trim();
+      user.phone = cleanPhone || undefined;
+    }
     if (visibleInRadar !== undefined)
       user.visibleInRadar = Boolean(visibleInRadar);
 
@@ -194,6 +218,67 @@ export const updateMyProfile = async (req, res, next) => {
       success: true,
       message: "Profile updated successfully",
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rateUser = async (req, res, next) => {
+  try {
+    const { score } = req.body;
+    const numericScore = Number(score);
+
+    if (!numericScore || numericScore < 1 || numericScore > 5) {
+      const error = new Error("El puntaje debe ser un número entre 1 y 5");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let user;
+    if (req.params.id === "me") {
+      const error = new Error("No puedes calificarte a ti mismo");
+      error.statusCode = 400;
+      throw error;
+    } else if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      user = await User.findById(req.params.id);
+    } else {
+      user = await User.findOne({ clerkId: req.params.id });
+    }
+
+    if (!user) {
+      const error = new Error("Usuario no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (user._id.toString() === req.user._id.toString()) {
+      const error = new Error("No puedes calificarte a ti mismo");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Filtrar calificación anterior del mismo usuario para actualizar
+    user.ratings = (user.ratings || []).filter(
+      (r) =>
+        (r.user?.toString() || r.user?._id?.toString()) !==
+        req.user._id.toString(),
+    );
+
+    user.ratings.push({
+      user: req.user._id,
+      score: numericScore,
+      createdAt: new Date(),
+    });
+
+    await user.save();
+
+    const dataWithStats = await attachUserStats(user, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      message: "Calificación guardada exitosamente",
+      data: dataWithStats,
     });
   } catch (error) {
     next(error);

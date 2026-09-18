@@ -6,6 +6,7 @@ import {
   getMyProfile,
   getUser,
   getUsers,
+  rateUser,
   updateMyProfile,
 } from "../controllers/user.controller.js";
 
@@ -17,6 +18,7 @@ userRouter.get("/me", authorize, getMyProfile);
 userRouter.put("/me", authorize, updateMyProfile);
 userRouter.get("/:id", authorize, getUser);
 userRouter.put("/:id", authorize, updateMyProfile);
+userRouter.post("/:id/rate", authorize, rateUser);
 
 userRouter.post("/", (req, res) => res.send({ title: "CREATE a new user" }));
 userRouter.delete("/:id", (req, res) => res.send({ title: "DELETE user" }));
