@@ -51,7 +51,7 @@ const toEventItem = (event, userOrId) => {
     priceWomen: plain.priceWomen,
     isMultiplePrices: plain.isMultiplePrices,
     contactMethod: plain.contactMethod ?? "chat",
-    contactPhone: plain.contactPhone ?? "",
+    contactPhone: plain.contactPhone || plain.organizer?.phone || "",
     externalTicketUrl: plain.externalTicketUrl ?? "",
     hideExactAddress: plain.hideExactAddress ?? false,
     closingAt: plain.closingAt ? plain.closingAt.toISOString() : undefined,
@@ -93,7 +93,7 @@ const toEventItem = (event, userOrId) => {
   };
 };
 
-const ORGANIZER_POPULATE = { path: "organizer", select: "name avatarUrl" };
+const ORGANIZER_POPULATE = { path: "organizer", select: "name avatarUrl phone" };
 const ATTENDEES_POPULATE = { path: "attendees.user", select: "name avatarUrl" };
 
 export const getEvents = async (req, res, next) => {
@@ -402,8 +402,18 @@ export const setAttendance = async (req, res, next) => {
 
 export const getUserEvents = async (req, res, next) => {
   try {
+    let organizerId = req.params.id;
+    if (organizerId === "me") {
+      organizerId = req.user._id;
+    } else if (!organizerId.match(/^[0-9a-fA-F]{24}$/)) {
+      const targetUser = await User.findOne({ clerkId: organizerId });
+      if (targetUser) {
+        organizerId = targetUser._id;
+      }
+    }
+
     const events = await Event.find({
-      organizer: req.params.id,
+      organizer: organizerId,
       status: "active",
     })
       .sort({ startAt: 1 })

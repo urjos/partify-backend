@@ -1,4 +1,38 @@
 import User from "../models/user.model.js";
+import Event from "../models/event.model.js";
+
+const attachUserStats = async (user) => {
+  const userObj = user.toObject ? user.toObject() : { ...user };
+
+  const organizedCount = await Event.countDocuments({
+    organizer: user._id,
+    status: "active",
+  });
+
+  const attendedCount = await Event.countDocuments({
+    "attendees.user": user._id,
+    "attendees.status": "going",
+  });
+
+  const events = await Event.find({ organizer: user._id });
+  let totalScore = 0;
+  let totalRatings = 0;
+  for (const ev of events) {
+    if (ev.ratings && ev.ratings.length > 0) {
+      for (const r of ev.ratings) {
+        totalScore += r.score;
+        totalRatings++;
+      }
+    }
+  }
+
+  userObj.organizedCount = organizedCount;
+  userObj.attendedCount = attendedCount;
+  userObj.rating =
+    totalRatings > 0 ? Number((totalScore / totalRatings).toFixed(1)) : 5.0;
+
+  return userObj;
+};
 
 export const getUsers = async (req, res, next) => {
   try {
@@ -12,7 +46,8 @@ export const getUsers = async (req, res, next) => {
 
 export const getMyProfile = async (req, res, next) => {
   try {
-    res.status(200).json({ success: true, data: req.user });
+    const dataWithStats = await attachUserStats(req.user);
+    res.status(200).json({ success: true, data: dataWithStats });
   } catch (error) {
     next(error);
   }
@@ -20,12 +55,10 @@ export const getMyProfile = async (req, res, next) => {
 
 export const getUser = async (req, res, next) => {
   try {
-    if (req.params.id === "me") {
-      return res.status(200).json({ success: true, data: req.user });
-    }
-
     let user;
-    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    if (req.params.id === "me") {
+      user = req.user;
+    } else if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
       user = await User.findById(req.params.id);
     } else {
       user = await User.findOne({ clerkId: req.params.id });
@@ -37,7 +70,8 @@ export const getUser = async (req, res, next) => {
       throw error;
     }
 
-    res.status(200).json({ success: true, data: user });
+    const dataWithStats = await attachUserStats(user);
+    res.status(200).json({ success: true, data: dataWithStats });
   } catch (error) {
     next(error);
   }
