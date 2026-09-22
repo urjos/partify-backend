@@ -10,14 +10,8 @@ const EVENT_CATEGORIES = [
   "Cumpleaños",
   "After office",
   "Fiesta electrónica",
-  "Music",
-  "Nightlife",
-  "House party",
-  "Outdoors",
-  "Food & Drink",
-  "Art & Culture",
-  "Sports",
-  "Networking",
+  "Festival",
+  "Otro",
 ];
 
 const mediaItemSchema = new mongoose.Schema(
