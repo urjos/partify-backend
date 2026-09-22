@@ -93,6 +93,10 @@ const userSchema = new mongoose.Schema(
         ref: "Event",
       },
     ],
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

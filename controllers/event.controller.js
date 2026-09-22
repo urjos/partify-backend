@@ -72,6 +72,7 @@ const toEventItem = (event, userOrId) => {
     isAdultsOnly: plain.isAdultsOnly ?? false,
     requirePhysicalId: plain.requirePhysicalId ?? false,
     authorAvatar: plain.organizer?.avatarUrl,
+    authorIsVerified: Boolean(plain.organizer?.isVerified),
     attendeeAvatars: (plain.attendees ?? [])
       .filter((a) => a.status === "going" && a.user?.avatarUrl)
       .slice(0, 3)
@@ -97,7 +98,10 @@ const toEventItem = (event, userOrId) => {
   };
 };
 
-const ORGANIZER_POPULATE = { path: "organizer", select: "name avatarUrl phone" };
+const ORGANIZER_POPULATE = {
+  path: "organizer",
+  select: "name avatarUrl phone isVerified",
+};
 const ATTENDEES_POPULATE = { path: "attendees.user", select: "name avatarUrl" };
 
 export const getEvents = async (req, res, next) => {

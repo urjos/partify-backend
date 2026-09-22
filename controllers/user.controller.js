@@ -36,6 +36,7 @@ const attachUserStats = async (user, currentUserId) => {
 
   userObj.organizedCount = organizedCount;
   userObj.attendedCount = attendedCount;
+  userObj.isVerified = Boolean(user.isVerified);
   userObj.rating =
     totalRatings > 0 ? Number((totalScore / totalRatings).toFixed(1)) : 5.0;
   userObj.ratingsCount = totalRatings;
@@ -174,6 +175,7 @@ export const updateMyProfile = async (req, res, next) => {
       spotifyPlaylist,
       phone,
       visibleInRadar,
+      isVerified,
     } = req.body;
 
     if (name !== undefined) user.name = name.trim();
@@ -211,6 +213,8 @@ export const updateMyProfile = async (req, res, next) => {
     }
     if (visibleInRadar !== undefined)
       user.visibleInRadar = Boolean(visibleInRadar);
+    if (isVerified !== undefined)
+      user.isVerified = Boolean(isVerified);
 
     await user.save();
 
