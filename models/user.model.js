@@ -49,8 +49,6 @@ const userSchema = new mongoose.Schema(
     },
     username: {
       type: String,
-      unique: true,
-      sparse: true,
       trim: true,
       lowercase: true,
     },
@@ -79,8 +77,6 @@ const userSchema = new mongoose.Schema(
 
     phone: {
       type: String,
-      unique: true,
-      sparse: true,
       trim: true,
     },
     visibleInRadar: {
@@ -99,6 +95,23 @@ const userSchema = new mongoose.Schema(
     ],
   },
   { timestamps: true },
+);
+
+// Índices únicos parciales para campos opcionales que no deben colisionar si son null o vacíos
+userSchema.index(
+  { username: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { username: { $type: "string", $gt: "" } },
+  },
+);
+
+userSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phone: { $type: "string", $gt: "" } },
+  },
 );
 
 // Índice para filtrado de usuarios en radar nocturno
