@@ -1,12 +1,12 @@
 import arcjet, { shield, detectBot, tokenBucket } from "@arcjet/node";
-import { ARCJET_KEY } from "./env.js";
+import { ARCJET_KEY, NODE_ENV } from "./env.js";
 
 const aj = arcjet({
   key: ARCJET_KEY,
   rules: [
     shield({ mode: "LIVE" }),
     detectBot({
-      mode: "DRY_RUN",
+      mode: NODE_ENV === "production" ? "LIVE" : "DRY_RUN",
       allow: ["CATEGORY:SEARCH_ENGINE"],
     }),
     // Create a token bucket rate limit. Other algorithms are supported.

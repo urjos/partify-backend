@@ -1,13 +1,37 @@
 import Event from "../models/event.model.js";
 import User from "../models/user.model.js";
 
-const toGeoLocation = ({ address, latitude, longitude }) => ({
-  address,
-  coordinates: {
-    type: "Point",
-    coordinates: [longitude, latitude],
-  },
-});
+const isFiniteNumberInRange = (value, min, max) =>
+  Number.isFinite(value) && value >= min && value <= max;
+
+const parseNumber = (value) =>
+  (typeof value === "number" ||
+    (typeof value === "string" && value.trim() !== ""))
+    ? Number(value)
+    : Number.NaN;
+
+const toGeoLocation = ({ address, latitude, longitude } = {}) => {
+  const lat = parseNumber(latitude);
+  const lng = parseNumber(longitude);
+  if (
+    typeof address !== "string" ||
+    !address.trim() ||
+    !isFiniteNumberInRange(lat, -90, 90) ||
+    !isFiniteNumberInRange(lng, -180, 180)
+  ) {
+    const error = new Error("location must contain a valid address, latitude, and longitude");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    address: address.trim(),
+    coordinates: {
+      type: "Point",
+      coordinates: [lng, lat],
+    },
+  };
+};
 
 const toEventItem = (event, userOrId) => {
   const plain = event.toObject ? event.toObject() : event;
@@ -111,12 +135,35 @@ export const getEvents = async (req, res, next) => {
     const filter = { status: "active" };
     if (category) filter.category = category;
 
-    if (lat && lng) {
-      const radiusKmNumber = Number(radiusKm) || 10;
+    const hasLat = lat !== undefined;
+    const hasLng = lng !== undefined;
+    if (hasLat !== hasLng) {
+      const error = new Error("lat and lng must be provided together");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (hasLat && hasLng) {
+      const latitude = parseNumber(lat);
+      const longitude = parseNumber(lng);
+      const radiusKmNumber = radiusKm === undefined ? 10 : parseNumber(radiusKm);
+
+      if (
+        !isFiniteNumberInRange(latitude, -90, 90) ||
+        !isFiniteNumberInRange(longitude, -180, 180) ||
+        !isFiniteNumberInRange(radiusKmNumber, 0.1, 100)
+      ) {
+        const error = new Error(
+          "lat, lng, and radiusKm must be valid geographic coordinates and a radius between 0.1 and 100 km",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
       const radiusInRadians = radiusKmNumber / 6378.1; // Radio de la Tierra en km
       filter["location.coordinates"] = {
         $geoWithin: {
-          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians],
+          $centerSphere: [[longitude, latitude], radiusInRadians],
         },
       };
     }

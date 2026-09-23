@@ -3,8 +3,15 @@ import { CLERK_WEBHOOK_SECRET } from "../config/env.js";
 import User from "../models/user.model.js";
 
 export const handleClerkWebhook = async (req, res) => {
-  const payload =
-    req.body instanceof Buffer ? req.body.toString("utf8") : req.body;
+  if (!CLERK_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: "Webhook verification is unavailable" });
+  }
+
+  if (!Buffer.isBuffer(req.body)) {
+    return res.status(400).json({ error: "Webhook body must be raw" });
+  }
+
+  const payload = req.body.toString("utf8");
 
   const headers = req.headers;
 
@@ -13,14 +20,11 @@ export const handleClerkWebhook = async (req, res) => {
   let event;
   try {
     // 1. Verificamos la firma (si falla, saltará al catch)
-    wh.verify(payload, {
+    event = wh.verify(payload, {
       "svix-id": headers["svix-id"],
       "svix-timestamp": headers["svix-timestamp"],
       "svix-signature": headers["svix-signature"],
     });
-
-    // 2. Si pasó la verificación, nosotros mismos parseamos el string a JSON
-    event = JSON.parse(payload.toString("utf8"));
   } catch (err) {
     console.error("Webhook verification failed:", err.message);
     return res.status(400).json({ error: "Invalid webhook signature" });
@@ -34,12 +38,18 @@ export const handleClerkWebhook = async (req, res) => {
         .filter(Boolean)
         .join(" ");
 
-      await User.create({
-        clerkId: data.id,
-        name: fullName || data.username || "Partify user",
-        email: data.email_addresses?.[0]?.email_address,
-        avatarUrl: data.image_url,
-      });
+      await User.findOneAndUpdate(
+        { clerkId: data.id },
+        {
+          $set: {
+            name: fullName || data.username || "Partify user",
+            email: data.email_addresses?.[0]?.email_address,
+            avatarUrl: data.image_url,
+          },
+          $setOnInsert: { clerkId: data.id },
+        },
+        { upsert: true, new: true, runValidators: true },
+      );
 
       console.log(`User created in MongoDB: ${data.id}`);
       break;
@@ -57,7 +67,7 @@ export const handleClerkWebhook = async (req, res) => {
           email: data.email_addresses?.[0]?.email_address,
           avatarUrl: data.image_url,
         },
-        { upsert: true, new: true },
+        { upsert: true, new: true, runValidators: true },
       );
 
       console.log(`User updated in MongoDB: ${data.id}`);

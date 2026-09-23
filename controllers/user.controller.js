@@ -1,5 +1,36 @@
 import User from "../models/user.model.js";
 import Event from "../models/event.model.js";
+import { SUPABASE_URL } from "../config/env.js";
+import { getSupabaseAdmin } from "../config/supabase.js";
+
+const USERS_MEDIA_BUCKET = "users-media";
+
+const ownedAvatarPath = (avatarUrl, clerkId) => {
+  if (!avatarUrl || typeof avatarUrl !== "string" || !SUPABASE_URL) return null;
+
+  try {
+    const url = new URL(avatarUrl);
+    const supabaseUrl = new URL(SUPABASE_URL);
+    const prefix = `/storage/v1/object/public/${USERS_MEDIA_BUCKET}/avatars/`;
+    if (url.origin !== supabaseUrl.origin || !url.pathname.startsWith(prefix)) {
+      return null;
+    }
+
+    const path = decodeURIComponent(url.pathname.slice(prefix.length));
+    return path.startsWith(`${clerkId}_`) ? `avatars/${path}` : null;
+  } catch {
+    return null;
+  }
+};
+
+const removeOwnedAvatar = async (avatarUrl, clerkId) => {
+  const path = ownedAvatarPath(avatarUrl, clerkId);
+  const supabase = getSupabaseAdmin();
+  if (!path || !supabase) return;
+
+  const { error } = await supabase.storage.from(USERS_MEDIA_BUCKET).remove([path]);
+  if (error) console.error("Unable to remove replaced avatar", error.message);
+};
 
 const attachUserStats = async (user, currentUserId) => {
   const userObj = user.toObject ? user.toObject() : { ...user };
@@ -175,7 +206,6 @@ export const updateMyProfile = async (req, res, next) => {
       spotifyPlaylist,
       phone,
       visibleInRadar,
-      isVerified,
     } = req.body;
 
     if (name !== undefined) user.name = name.trim();
@@ -202,7 +232,28 @@ export const updateMyProfile = async (req, res, next) => {
     }
 
     if (bio !== undefined) user.bio = bio.trim();
-    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    const previousAvatarUrl = avatarUrl !== undefined ? user.avatarUrl : null;
+    if (avatarUrl !== undefined) {
+      if (avatarUrl !== null && typeof avatarUrl !== "string") {
+        const error = new Error("avatarUrl must be a URL or null");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // A Supabase avatar can only refer to the authenticated user's namespace.
+      // Provider avatars are external and intentionally never sent to Storage.remove.
+      if (
+        avatarUrl &&
+        avatarUrl.includes(`/storage/v1/object/public/${USERS_MEDIA_BUCKET}/`) &&
+        !ownedAvatarPath(avatarUrl, user.clerkId)
+      ) {
+        const error = new Error("avatarUrl does not belong to the authenticated user");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      user.avatarUrl = avatarUrl;
+    }
     if (location !== undefined) user.location = location.trim();
     if (genres !== undefined) user.genres = Array.isArray(genres) ? genres : [];
     if (spotifyPlaylist !== undefined)
@@ -213,10 +264,11 @@ export const updateMyProfile = async (req, res, next) => {
     }
     if (visibleInRadar !== undefined)
       user.visibleInRadar = Boolean(visibleInRadar);
-    if (isVerified !== undefined)
-      user.isVerified = Boolean(isVerified);
 
     await user.save();
+    if (avatarUrl !== undefined) {
+      await removeOwnedAvatar(previousAvatarUrl, user.clerkId);
+    }
 
     res.status(200).json({
       success: true,
