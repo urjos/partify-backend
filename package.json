@@ -24,10 +24,6 @@
     "mongodb": "^7.6.0",
     "mongoose": "^9.9.3",
     "morgan": "~1.9.1",
-    "react-native-gesture-handler": "^3.2.1",
-    "react-native-reanimated": "^4.6.0",
-    "react-native-svg": "^15.15.5",
-    "rn-custom-select-dropdown": "^1.1.9",
     "svix": "^2.3.0"
   },
   "devDependencies": {
