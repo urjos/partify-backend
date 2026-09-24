@@ -1,12 +1,12 @@
 import arcjet, { shield, detectBot, tokenBucket } from "@arcjet/node";
-import { ARCJET_KEY, NODE_ENV } from "./env.js";
+import { ARCJET_KEY } from "./env.js";
 
 const aj = arcjet({
   key: ARCJET_KEY,
   rules: [
     shield({ mode: "LIVE" }),
     detectBot({
-      mode: NODE_ENV === "production" ? "LIVE" : "DRY_RUN",
+      mode: "DRY_RUN", // Mobile apps (React Native / OkHttp) do not send standard browser fingerprints
       allow: ["CATEGORY:SEARCH_ENGINE"],
     }),
     // Create a token bucket rate limit. Other algorithms are supported.
