@@ -4,7 +4,9 @@ import User from "../models/user.model.js";
 
 export const handleClerkWebhook = async (req, res) => {
   if (!CLERK_WEBHOOK_SECRET) {
-    return res.status(503).json({ error: "Webhook verification is unavailable" });
+    return res
+      .status(503)
+      .json({ error: "Webhook verification is unavailable" });
   }
 
   if (!Buffer.isBuffer(req.body)) {
@@ -19,7 +21,6 @@ export const handleClerkWebhook = async (req, res) => {
 
   let event;
   try {
-    // 1. Verificamos la firma (si falla, saltará al catch)
     event = wh.verify(payload, {
       "svix-id": headers["svix-id"],
       "svix-timestamp": headers["svix-timestamp"],
@@ -32,56 +33,71 @@ export const handleClerkWebhook = async (req, res) => {
 
   const { type, data } = event;
 
-  switch (type) {
-    case "user.created": {
-      const fullName = [data.first_name, data.last_name]
-        .filter(Boolean)
-        .join(" ");
+  try {
+    switch (type) {
+      case "user.created": {
+        const fullName = [data.first_name, data.last_name]
+          .filter(Boolean)
+          .join(" ");
+        const email = data.email_addresses?.[0]?.email_address;
+        const profileFields = {
+          name: fullName || data.username || "Partify user",
+          email,
+          avatarUrl: data.image_url,
+        };
 
-      await User.findOneAndUpdate(
-        { clerkId: data.id },
-        {
-          $set: {
-            name: fullName || data.username || "Partify user",
+        try {
+          await User.findOneAndUpdate(
+            { clerkId: data.id },
+            { $set: profileFields, $setOnInsert: { clerkId: data.id } },
+            { upsert: true, new: true, runValidators: true },
+          );
+        } catch (err) {
+          if (err.code === 11000 && email) {
+            await User.findOneAndUpdate(
+              { email },
+              { $set: { clerkId: data.id, ...profileFields } },
+              { new: true, upsert: true, runValidators: true },
+            );
+          } else {
+            throw err;
+          }
+        }
+
+        console.log(`User created in MongoDB: ${data.id}`);
+        break;
+      }
+
+      case "user.updated": {
+        const updatedName = [data.first_name, data.last_name]
+          .filter(Boolean)
+          .join(" ");
+
+        await User.findOneAndUpdate(
+          { clerkId: data.id },
+          {
+            name: updatedName || data.username,
             email: data.email_addresses?.[0]?.email_address,
             avatarUrl: data.image_url,
           },
-          $setOnInsert: { clerkId: data.id },
-        },
-        { upsert: true, new: true, runValidators: true },
-      );
+          { upsert: true, new: true, runValidators: true },
+        );
 
-      console.log(`User created in MongoDB: ${data.id}`);
-      break;
+        console.log(`User updated in MongoDB: ${data.id}`);
+        break;
+      }
+
+      case "user.deleted": {
+        await User.findOneAndDelete({ clerkId: data.id });
+        console.log(`User deleted from MongoDB: ${data.id}`);
+        break;
+      }
+
+      default:
+        console.log(`Unhandled webhook event: ${type}`);
     }
-
-    case "user.updated": {
-      const updatedName = [data.first_name, data.last_name]
-        .filter(Boolean)
-        .join(" ");
-
-      await User.findOneAndUpdate(
-        { clerkId: data.id },
-        {
-          name: updatedName || data.username,
-          email: data.email_addresses?.[0]?.email_address,
-          avatarUrl: data.image_url,
-        },
-        { upsert: true, new: true, runValidators: true },
-      );
-
-      console.log(`User updated in MongoDB: ${data.id}`);
-      break;
-    }
-
-    case "user.deleted": {
-      await User.findOneAndDelete({ clerkId: data.id });
-      console.log(`User deleted from MongoDB: ${data.id}`);
-      break;
-    }
-
-    default:
-      console.log(`Unhandled webhook event: ${type}`);
+  } catch (err) {
+    console.error(`Webhook handler error (${type}):`, err.message);
   }
 
   res.status(200).json({ received: true });

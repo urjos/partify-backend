@@ -20,21 +20,32 @@ const authorize = async (req, res, next) => {
 
     let user = await User.findOne({ clerkId });
 
-    // Primera vez que vemos a este usuario de Clerk: lo espejamos en Mongo.
-    // Necesario porque Event.organizer / attendees.user son ObjectId, no
-    // clerkId directo.
     if (!user) {
       const clerkUser = await clerkClient.users.getUser(clerkId);
       const fullName = [clerkUser.firstName, clerkUser.lastName]
         .filter(Boolean)
         .join(" ");
+      const email = clerkUser.emailAddresses?.[0]?.emailAddress;
 
-      user = await User.create({
-        clerkId,
+      const profileFields = {
         name: fullName || clerkUser.username || "Partify user",
-        email: clerkUser.emailAddresses?.[0]?.emailAddress,
+        email,
         avatarUrl: clerkUser.imageUrl,
-      });
+      };
+
+      try {
+        user = await User.create({ clerkId, ...profileFields });
+      } catch (err) {
+        if (err.code === 11000 && email) {
+          user = await User.findOneAndUpdate(
+            { email },
+            { $set: { clerkId, ...profileFields } },
+            { new: true, upsert: true, runValidators: true },
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     req.user = user;
